@@ -9,6 +9,14 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelBinarizer, StandardScaler
 from sklearn.pipeline import FeatureUnion
+# Models import
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+# Cross-validation feature
+from sklearn.model_selection import cross_val_score
+# Evaluation import
+from sklearn.metrics import mean_squared_error
 
 PATH = "data/handson-ml-master/datasets/housing/housing.csv"
 
@@ -121,3 +129,60 @@ full_pipeline = FeatureUnion(transformer_list=[
 
 # Pipe the dataset for processing
 housing_prep = full_pipeline.fit_transform(housing)
+
+"""
+Training and Evaluating on the training set
+"""
+# Linear model
+
+lin_reg = LinearRegression()
+lin_reg.fit(housing_prep, housing_labels)
+
+housing_predictions = lin_reg.predict(housing_prep)
+
+lin_mse = mean_squared_error(housing_labels, housing_predictions)
+lin_rmse = np.sqrt(lin_mse)
+print("RMSE for linear model: ", lin_rmse)
+
+# Decision Tree model
+tree_reg = DecisionTreeRegressor()
+tree_reg.fit(housing_prep, housing_labels)
+
+housing_predictions = tree_reg.predict(housing_prep)
+
+tree_mse = mean_squared_error(housing_labels, housing_predictions)
+tree_rmse = np.sqrt(tree_mse)
+print("RMSE for Decision Tree model: ", tree_rmse)
+
+# Random Forest model
+rf_reg = RandomForestRegressor()
+rf_reg.fit(housing_prep, housing_labels)
+
+housing_predictions = rf_reg.predict(housing_prep)
+
+rf_mse = mean_squared_error(housing_labels, housing_predictions)
+rf_rmse = np.sqrt(rf_mse)
+print("RMSE for Random Forest model: ", rf_rmse)
+
+
+# Using cross-validation
+def display_scores(scores):
+    print("Scores: ", scores)
+    print("Mean: ", scores.mean())
+    print("Standard Deviation: ", scores.std())
+
+lin_scores = cross_val_score(lin_reg, housing_prep, housing_labels,
+            scoring="neg_mean_squared_error", cv=10)
+lin_rmse_scores = np.sqrt(-lin_scores)
+
+tree_scores = cross_val_score(tree_reg, housing_prep, housing_labels,
+            scoring="neg_mean_squared_error", cv=10)
+tree_rmse_scores = np.sqrt(-tree_scores)
+
+rf_scores = cross_val_score(rf_reg, housing_prep, housing_labels,
+            scoring="neg_mean_squared_error", cv=10)
+rf_rmse_scores = np.sqrt(-rf_scores)
+
+display_scores(lin_rmse_scores)
+display_scores(tree_rmse_scores)
+display_scores(rf_rmse_scores)
