@@ -7,7 +7,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import LabelBinarizer, StandardScaler
+from sklearn.preprocessing import LabelEncoder,LabelBinarizer, StandardScaler
 from sklearn.pipeline import FeatureUnion
 # Models import
 from sklearn.linear_model import LinearRegression
@@ -17,6 +17,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import cross_val_score
 # Evaluation import
 from sklearn.metrics import mean_squared_error
+# Grid Search
+from sklearn.model_selection import GridSearchCV
+
 
 PATH = "data/handson-ml-master/datasets/housing/housing.csv"
 
@@ -55,6 +58,12 @@ housing = strat_train_set.drop("median_house_value", axis=1)
 housing_labels = strat_train_set["median_house_value"].copy()
 
 housing_num = housing.drop("ocean_proximity", axis=1)
+
+encoder = LabelEncoder()
+
+# Encoding
+housing_cat = housing['ocean_proximity']
+housing_cat_encoded = encoder.fit_transform(housing_cat)
 
 
 # Custom Transformers
@@ -186,3 +195,54 @@ rf_rmse_scores = np.sqrt(-rf_scores)
 display_scores(lin_rmse_scores)
 display_scores(tree_rmse_scores)
 display_scores(rf_rmse_scores)
+
+# Fine tuning the model using Grid search
+param_grid = [
+    {'n_estimators': [3, 10, 30],
+    'max_features': [2, 4, 6, 8]},
+    {'bootstrap': [False],
+    'n_estimators': [3, 10],
+    'max_features': [2, 4, 6]}
+]
+
+forest_reg = RandomForestRegressor()
+
+grid_search = GridSearchCV(forest_reg,
+                           param_grid,
+                           cv=5,
+                           scoring='neg_mean_squared_error')
+
+grid_search.fit(housing_prep, housing_labels)
+
+print(grid_search.best_params_)
+
+# Listing the evaluation scores together with the features
+cv_res = grid_search.cv_results_
+
+for mean_score, params in zip(cv_res["mean_test_score"], cv_res["params"]):
+    print(np.sqrt(-mean_score), params)
+
+# Looking at the best model and their attributes importance
+features_weight = grid_search.best_estimator_.feature_importances_
+
+extra_attribs = ["rooms_per_hhold", "pop_per_hhold", "bedrooms_per_room"]
+cat_one_hot_attribs = list(encoder.classes_)
+attributes = num_attribs + extra_attribs + cat_one_hot_attribs
+
+sorted(zip(features_weight, attributes), reverse=True)
+
+# Evaluate the choosen model on the test set
+
+final_model = grid_search.best_estimator_
+
+X_test = strat_test_set.drop('median_house_value', axis=1)
+y_test = strat_test_set["median_house_value"].copy()
+
+X_test_prepared = full_pipeline.transform(X_test)
+
+final_predictions = final_model.predict(X_test_prepared)
+
+final_mse = mean_squared_error(y_test, final_predictions)
+final_rmse = np.sqrt(final_mse)
+
+print(final_rmse)
